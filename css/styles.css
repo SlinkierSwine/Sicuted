@@ -1,9 +1,39 @@
-QMainWindow {
-            background: #505050;
-        }
+* {
+    font-size: 15px;
+    font-family: Candara;
+}
+
+QWidget {
+    background: #505050;
+    color: #d5e6d3;
+}
 
 QTextEdit {
     background: #202020;
     border-radius: 5px;
-    font-size: 5em;
+    font-size: 20px;
+    selection-color: ;
+}
+
+QTabBar::tab {
+    height: 20px;
+    min-width: 70px;
+}
+
+QMenuBar {
+    border-bottom: 1px inset #202020;
+}
+
+QMenuBar::item:selected {
+     background-color: #434343;
+}
+
+QMenu {
+    margin: 2px; /* немного пространства вокруг меню */
+    border: 1px solid transparent;
+    text-align: center;
+}
+
+QMenu::item:selected {
+    background: #434343;
 }
