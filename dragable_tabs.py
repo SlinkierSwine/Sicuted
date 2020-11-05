@@ -46,7 +46,7 @@ class DragableTabs(QTabWidget):
 
         self.parent.TABINDEX = self.indexOf(self.widget(self.indexTab))
 
-    def dragLeaveEvent(self,e):
+    def dragLeaveEvent(self, e):
         e.accept()
 
     def dropEvent(self, e):
@@ -58,7 +58,8 @@ class DragableTabs(QTabWidget):
         counter = self.count()
 
         if counter == 0:
-            self.addTab(e.source().parentWidget().widget(self.parent.TABINDEX), e.source().tabText(self.parent.TABINDEX))
+            self.addTab(e.source().parentWidget().widget(self.parent.TABINDEX),
+                        e.source().tabText(self.parent.TABINDEX))
         else:
             self.insertTab(counter + 1, e.source().parentWidget().widget(self.parent.TABINDEX),
                            e.source().tabText(self.parent.TABINDEX))
