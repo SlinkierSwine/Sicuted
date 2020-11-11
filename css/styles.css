@@ -1,6 +1,6 @@
 * {
     font-size: 15px;
-    font-family: Candara;
+    font-family: "Segoe UI";
 }
 
 QWidget {
@@ -11,8 +11,8 @@ QWidget {
 QTextEdit {
     background: #202020;
     border-radius: 5px;
+    font-family: "Segoe UI Semibold";
     font-size: 20px;
-    selection-color: ;
 }
 
 QTabBar::tab {
