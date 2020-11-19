@@ -1,14 +1,19 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PyQt5 import QtGui
 import sys
 from PyQt5.QtWebEngineWidgets import *
 from dragable_tabs import DragableTabs
 from SETTINGS import *
 from text_editor import MyTextEdit
+from style_settings_window import StyleSettings
+from database import DataBase
 
 
 def save(sender, path):
+    """
+    :param sender: QTabWidget
+    :param path: str, file path
+    """
     try:
         text_edit = sender.currentWidget()
         with open(path, 'w', encoding='UTF-8') as f:
@@ -18,12 +23,17 @@ def save(sender, path):
 
 
 def save_as(sender):
+    """
+    :param sender:  QTabWidget
+    :return: tuple (None, None) or tuple (str, str)
+    """
     try:
         fpath = QFileDialog.getSaveFileName()[0]
         print(fpath)
         if fpath != '':
             text_edit = sender.currentWidget()
             text = text_edit.toPlainText()
+
             with open(fpath, 'w', encoding='UTF-8') as f:
                 f.write(text)
         else:
@@ -40,6 +50,9 @@ def save_as(sender):
 
 
 def create_save_file_msg():
+    """
+    Creates save file QMessageBox
+    """
     msg = QMessageBox()
     msg.setWindowTitle('Save changes')
     msg.setIcon(QMessageBox.Question)
@@ -51,6 +64,11 @@ def create_save_file_msg():
 
 
 def create_error_msg(parent, e):
+    """
+    Creates error QMessageBox
+    :param parent: QWidget
+    :param e: Exception
+    """
     er = QMessageBox(parent)
     er.setWindowTitle('Error')
     er.setIcon(QMessageBox.Critical)
@@ -59,6 +77,7 @@ def create_error_msg(parent, e):
 
 
 class Window(QWidget):
+    """Main window"""
     def __init__(self):
         super().__init__()
         self.tab_paths = {}
@@ -68,9 +87,7 @@ class Window(QWidget):
         self.layout = QBoxLayout(QBoxLayout.LeftToRight)
         self.setLayout(self.layout)
         self.tab_widget_1 = DragableTabs(self)
-        text_edit = MyTextEdit(lang='p')
-        text_edit.setTabStopDistance(
-            QtGui.QFontMetricsF(text_edit.font()).horizontalAdvance(' ') * 4)
+        text_edit = MyTextEdit()
         self.tab_widget_1.addTab(text_edit, 'untitled')
         self.layout.addWidget(self.tab_widget_1)
         self.columns_count = 1
@@ -82,11 +99,14 @@ class Window(QWidget):
 
         self.connect_actions()
 
-        with open('./css/styles.css') as ss:
-            self.styleshit = ss.read()
-        self.setStyleSheet(self.styleshit)
+        self.db = DataBase('db.db')
+        self.style_settings_window = StyleSettings(self, self.db)
+        self.style_settings_window.apply_style_sheet()
 
     def open_file(self):
+        """
+        Creates QFileDialog, opens given file and writes it in new QTextEdit
+        """
         fpath = QFileDialog.getOpenFileName(self, 'Choose a file', '')[0]
         try:
             if fpath != '' and fpath not in self.tab_paths.values():
@@ -110,10 +130,17 @@ class Window(QWidget):
             create_error_msg(self, e)
 
     def new_file(self):
+        """
+        Creates new QTextEdit
+        """
         text_edit = MyTextEdit()
         self.tab_widget_1.addTab(text_edit, 'untitled')
 
     def save_file_separately(self):
+        """
+        Creates QFileDialog and saves existing file at returned path
+        If file doesn't exist, calls save_file_as_separately
+        """
         try:
             if self.tab_widget_1.currentWidget().focused is True:
                 fpath = self.tab_paths.get(self.tab_widget_1.tabText(self.tab_widget_1.currentIndex()))
@@ -133,6 +160,9 @@ class Window(QWidget):
             create_error_msg(self, e)
 
     def save_file_as_separately(self):
+        """
+        Creates QFileDialog and saves new file at returned path
+        """
         try:
             if self.tab_widget_1.currentWidget().focused is True:
                 fpath, name = save_as(self.tab_widget_1)
@@ -148,6 +178,9 @@ class Window(QWidget):
             create_error_msg(self, e)
 
     def close_file(self, sender):
+        """
+        :param sender: QTabWidget
+        """
         try:
             res = create_save_file_msg()
             index = sender.currentIndex()
@@ -167,6 +200,9 @@ class Window(QWidget):
             create_error_msg(self, e)
 
     def close_file_separately(self):
+        """
+        Closes and saves text in focused QTextWidget
+        """
         try:
             if self.tab_widget_1.currentWidget().focused is True:
                 self.close_file(self.tab_widget_1)
@@ -178,6 +214,11 @@ class Window(QWidget):
             create_error_msg(self, e)
 
     def close_tab(self, index):
+        """
+        Called when Tab close button is pressed
+        Closes tab at index
+        :param index: int
+        """
         try:
             sender = self.sender()
             if self.tab_paths.get(sender.tabText(index), None) is not None:
@@ -192,7 +233,7 @@ class Window(QWidget):
     def init_actions(self):
         """Initializes actions"""
         # File menu actions
-        self.new_action = QAction('New', self)
+        self.new_action = QAction('New',  self)
         self.open_action = QAction('Open', self)
         self.save_action = QAction('Save', self)
         self.save_as_action = QAction('Save as', self)
@@ -206,7 +247,7 @@ class Window(QWidget):
         self.one_col_layout_action = QAction('One column layout', self)
         self.vertical_layout = QAction('Vertical', self)
         self.horizontal_layout = QAction('Horizontal', self)
-        self.python_syntax = QAction('Python')
+        self.style = QAction('Style', self)
 
     def init_menus(self):
         """Initializes menus and adds actions"""
@@ -227,9 +268,7 @@ class Window(QWidget):
 
         self.menu_layout = self.menu_view.addMenu('Layout orientation')
         self.menu_layout.addActions([self.vertical_layout, self.horizontal_layout])
-
-        self.menu_lang = self.menu_view.addMenu('Syntax')
-        self.menu_lang.addAction(self.python_syntax)
+        self.menu_view.addAction(self.style)
 
     def connect_actions(self):
         """Connects actions with functions"""
@@ -252,10 +291,12 @@ class Window(QWidget):
         self.one_col_layout_action.triggered.connect(self.remove_second_column)
         self.vertical_layout.triggered.connect(self.set_vertical_layout)
         self.horizontal_layout.triggered.connect(self.set_horizontal_layout)
-
-        self.python_syntax.triggered.connect(self.set_syntax)
+        self.style.triggered.connect(self.set_style)
 
     def create_second_column(self):
+        """
+        Creates second QTabWidget
+        """
         try:
             if self.columns_count < 2:
                 self.tab_widget_2 = DragableTabs(self)
@@ -267,6 +308,9 @@ class Window(QWidget):
             create_error_msg(self, e)
 
     def remove_second_column(self):
+        """
+        Removes second QTabWidget and drags all its tabs to the first one
+        """
         try:
             if self.columns_count == 2:
                 for i in range(self.tab_widget_2.count(), -1, -1):
@@ -281,6 +325,9 @@ class Window(QWidget):
             create_error_msg(self, e)
 
     def open_browser(self):
+        """
+        Opens browser in a new tab
+        """
         try:
             self.browser = QWebEngineView()
             self.browser.setUrl(QUrl(home_url))
@@ -289,22 +336,22 @@ class Window(QWidget):
             create_error_msg(self, e)
 
     def set_horizontal_layout(self):
+        """
+        Sets window layout to horizontal
+        """
         self.layout.setDirection(QBoxLayout.LeftToRight)
 
     def set_vertical_layout(self):
+        """
+        Sets window layout to vertical
+        """
         self.layout.setDirection(QBoxLayout.TopToBottom)
 
-    def set_syntax(self):
-        try:
-            if self.tab_widget_1.currentWidget().focused is True:
-                if self.sender() == self.python_syntax:
-                    self.tab_widget_1.currentWidget().set_lang('python')
-
-            if self.tab_widget_2.currentWidget().focused is True:
-                if self.sender() == self.python_syntax:
-                    self.tab_widget_2.currentWidget().set_lang('python')
-        except Exception as e:
-            print(e)
+    def set_style(self):
+        """
+        Opens StyleSettings window
+        """
+        self.style_settings_window.show()
 
 
 if __name__ == '__main__':

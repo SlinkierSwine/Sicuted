@@ -18,18 +18,33 @@ def format(color, style=''):
     return _format
 
 
+def change_styles(data):
+    global STYLES
+    STYLES = {
+        'keyword': format(data['keywords']),
+        'operator': format(data['operators']),
+        'brace': format(data['braces']),
+        'defclass': format(data['defclass'], 'bold'),
+        'string': format(data['string']),
+        'string2': format(data['multiline_string'], 'italic'),
+        'comment': format(data['comments'], 'italic'),
+        'self': format(data['self_color'], 'italic'),
+        'numbers': format(data['numbers']),
+    }
+
+
 # Syntax styles that can be shared by all languages
-STYLES = {
-    'keyword': format('orange'),
-    'operator': format('darkGrey'),
-    'brace': format('darkGray'),
-    'defclass': format('skyblue', 'bold'),
-    'string': format('lightGreen'),
-    'string2': format('Magenta', 'italic'),
-    'comment': format('darkGreen', 'italic'),
-    'self': format('green', 'italic'),
-    'numbers': format('skyblue'),
-}
+# STYLES = {
+#     'keyword': format('orange'),
+#     'operator': format('darkGrey'),
+#     'brace': format('darkGray'),
+#     'defclass': format('skyblue', 'bold'),
+#     'string': format('lightGreen'),
+#     'string2': format('Green', 'italic'),
+#     'comment': format('darkGreen', 'italic'),
+#     'self': format('Magenta', 'italic'),
+#     'numbers': format('skyblue'),
+# }
 
 
 class PythonHighlighter(QSyntaxHighlighter):
@@ -69,8 +84,8 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Multi-line strings (expression, flag, style)
         # FIXME: The triple-quotes in these two lines will mess up the
         # syntax highlighting from this point onward
-        self.tri_single = (QRegExp("'''"), 1, STYLES['string2'])
-        self.tri_double = (QRegExp('"""'), 2, STYLES['string2'])
+        self.tri_single = (QRegExp(r"'''"), 1, STYLES['string2'])
+        self.tri_double = (QRegExp(r'"""'), 2, STYLES['string2'])
 
         rules = []
 
@@ -114,22 +129,25 @@ class PythonHighlighter(QSyntaxHighlighter):
         """Apply syntax highlighting to the given block of text.
         """
         # Do other syntax formatting
-        for expression, nth, format in self.rules:
-            index = expression.indexIn(text, 0)
+        try:
+            for expression, nth, format in self.rules:
+                index = expression.indexIn(text, 0)
 
-            while index >= 0:
-                # We actually want the index of the nth match
-                index = expression.pos(nth)
-                length = len(expression.cap(nth))
-                self.setFormat(index, length, format)
-                index = expression.indexIn(text, index + length)
+                while index >= 0:
+                    # We actually want the index of the nth match
+                    index = expression.pos(nth)
+                    length = len(expression.cap(nth))
+                    self.setFormat(index, length, format)
+                    index = expression.indexIn(text, index + length)
 
-        self.setCurrentBlockState(0)
+            self.setCurrentBlockState(0)
 
-        # Do multi-line strings
-        in_multiline = self.match_multiline(text, *self.tri_single)
-        if not in_multiline:
-            in_multiline = self.match_multiline(text, *self.tri_double)
+            # Do multi-line strings
+            in_multiline = self.match_multiline(text, *self.tri_single)
+            if not in_multiline:
+                in_multiline = self.match_multiline(text, *self.tri_double)
+        except Exception as e:
+            print(e)
 
     def match_multiline(self, text, delimiter, in_state, style):
         """Do highlighting of multi-line strings. ``delimiter`` should be a
@@ -159,7 +177,7 @@ class PythonHighlighter(QSyntaxHighlighter):
             # No; multi-line string
             else:
                 self.setCurrentBlockState(in_state)
-                length = text.length() - start + add
+                length = len(text) - start + add
             # Apply formatting
             self.setFormat(start, length, style)
             # Look for the next match
