@@ -2,7 +2,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from PyQt5 import uic
-import syntax_highlighter
+from modules import syntax_highlighter, text_editor
+from SETTINGS import create_error_msg
 
 
 class StyleSettings(QWidget):
@@ -15,8 +16,9 @@ class StyleSettings(QWidget):
         super().__init__()
         self.db = db
         self.main_window = main_window
-        uic.loadUi('./style_settings.ui', self)
+        uic.loadUi('ui_files/style_settings.ui', self)
         self.setWindowTitle('Style Settings')
+        self.setWindowIcon(QtGui.QIcon('imgs/icon.png'))
         self.connect_actions()
         self.setFixedSize(760, 530)
         self.setWindowModality(Qt.ApplicationModal)
@@ -35,6 +37,7 @@ class StyleSettings(QWidget):
 
             self.te_background_color_toolbtn.clicked.connect(self.choose_color)
             self.te_font_color_toolbtn.clicked.connect(self.choose_color)
+            self.line_highlighter_color_toolbtn.clicked.connect(self.choose_color)
 
             self.keywords_toolbtn.clicked.connect(self.choose_color)
             self.operators_toolbtn.clicked.connect(self.choose_color)
@@ -52,7 +55,7 @@ class StyleSettings(QWidget):
             self.save_btn.clicked.connect(self.save_preset)
             self.delete_btn.clicked.connect(self.delete_preset)
         except Exception as e:
-            print(e)
+            create_error_msg(e)
 
     def set_default_values(self):
         """
@@ -71,6 +74,7 @@ class StyleSettings(QWidget):
             self.te_font.setCurrentFont(QtGui.QFont(te[2]))
             self.te_font_color.setText(te[3])
             self.te_font_size.setText(te[4])
+            self.line_highlighter_color.setText(te[5])
 
             self.keywords.setText(sh[1])
             self.operators.setText(sh[2])
@@ -82,7 +86,7 @@ class StyleSettings(QWidget):
             self.self_l.setText(sh[8])
             self.numbers.setText(sh[9])
         except Exception as e:
-            print(e, 'set default')
+            create_error_msg(e)
 
     def choose_color(self):
         """
@@ -102,6 +106,8 @@ class StyleSettings(QWidget):
                 self.te_background_color.setText(color.name())
             elif sender == self.te_font_color_toolbtn:
                 self.te_font_color.setText(color.name())
+            elif sender == self.line_highlighter_color_toolbtn:
+                self.line_highlighter_color.setText(color.name())
 
             elif sender == self.keywords_toolbtn:
                 self.keywords.setText(color.name())
@@ -140,6 +146,7 @@ class StyleSettings(QWidget):
             'font': self.te_font.currentFont().family(),
             'font color': self.te_font_color.text(),
             'font size': self.te_font_size.text(),
+            'line_highlighter_color': self.line_highlighter_color.text()
         }
 
         syntax_highlighter_data = {
@@ -163,15 +170,20 @@ class StyleSettings(QWidget):
             name, ok_pressed = QInputDialog.getText(self, "Preset name",
                                                     "Set preset name")
             if ok_pressed:
-                main_window_data, text_editor_data, syntax_highlighter_data = self.get_all_data()
+                if name in self.db.get_all_presets():
+                    msg = QMessageBox(QMessageBox.Information, 'Info', 'Preset with this name already exists')
+                    msg.exec()
+                    ok_pressed = False
+                else:
+                    main_window_data, text_editor_data, syntax_highlighter_data = self.get_all_data()
 
-                self.db.create_new_preset(name, main_window_data, text_editor_data, syntax_highlighter_data)
-                self.db.set_current_preset(name)
-                self.set_default_values()
-                self.apply_style_sheet()
+                    self.db.create_new_preset(name, main_window_data, text_editor_data, syntax_highlighter_data)
+                    self.db.set_current_preset(name)
+                    self.set_default_values()
+                    self.apply_style_sheet()
 
         except Exception as e:
-            print(e)
+            create_error_msg(e)
         else:
             if ok_pressed:
                 msg = QMessageBox(QMessageBox.Information, 'Info', 'Preset was saved successfully')
@@ -191,7 +203,7 @@ class StyleSettings(QWidget):
                 self.db.update_preset(current_preset_name, mw, te, sh)
                 self.apply_style_sheet()
         except Exception as e:
-            print(e)
+            create_error_msg(e)
         else:
             if current_preset_name != 'Default':
                 msg = QMessageBox(QMessageBox.Information, 'Info', 'Preset was saved successfully')
@@ -212,7 +224,7 @@ class StyleSettings(QWidget):
                 self.apply_style_sheet()
 
         except Exception as e:
-            print(e)
+            create_error_msg(e)
 
     def delete_preset(self):
         """
@@ -229,58 +241,79 @@ class StyleSettings(QWidget):
                     self.db.set_current_preset('Default')
                     self.set_default_values()
                     self.apply_style_sheet()
+            else:
+                ok_pressed = False
 
         except Exception as e:
-            print(e, 'ada')
+            create_error_msg(e)
+        else:
+            if ok_pressed:
+                msg = QMessageBox(QMessageBox.Information, 'Info', 'Preset was deleted successfully')
+                msg.exec()
 
     def apply_style_sheet(self):
         """
         Applies style sheet to main window and sets styles to syntax_highlighter
         """
-        main_window_data, text_editor_data, syntax_highlighter_data = self.get_all_data()
-        self.main_window.setStyleSheet('''QWidget {
-    background: %s;
-    color: %s;
-    font-family: %s;
-    font-size: %s;
-}
+        try:
+            main_window_data, text_editor_data, syntax_highlighter_data = self.get_all_data()
+            self.main_window.setStyleSheet('''QWidget {
+        background: %s;
+        color: %s;
+        font-family: %s;
+        font-size: %s;
+    }
+    
+    QPlainTextEdit {
+        background: %s;
+        border-radius: 5px;
+        font-family: %s;
+        font-size: 20px;
+    }
+    
+    QTabBar::tab {
+        height: 20px;
+        min-width: 70px;
+    }
+    
+    QTabBar::close-button {
+         image: url(imgs/close-button);
+         transition: 0.2s;
+     }
+     
+     QTabBar::close-button:hover {
+        image: url(imgs/close-button_hover);
+     }
+    
+    QMenuBar {
+        border-bottom: 1px inset #202020;
+    }
+    
+    QMenuBar::item:selected {
+         background-color: %s;
+    }
+    
+    QMenu {
+        margin: 2px;
+        border: 1px solid transparent;
+        text-align: center;
+    }
+    
+    QMenu::item:selected {
+        background: %s;
+    }''' % (main_window_data['bgcolor'],
+            main_window_data['font color'],
+            main_window_data['font'],
+            main_window_data['font size'],
+            text_editor_data['bgcolor'],
+            text_editor_data['font'],
+            main_window_data['selected item color'],
+            main_window_data['selected item color']))
 
-QTextEdit {
-    background: %s;
-    border-radius: 5px;
-    font-family: %s;
-    font-size: 20px;
-}
-
-QTabBar::tab {
-    height: 20px;
-    min-width: 70px;
-}
-
-QMenuBar {
-    border-bottom: 1px inset #202020;
-}
-
-QMenuBar::item:selected {
-     background-color: %s;
-}
-
-QMenu {
-    margin: 2px;
-    border: 1px solid transparent;
-    text-align: center;
-}
-
-QMenu::item:selected {
-    background: %s;
-}''' % (main_window_data['bgcolor'],
-        main_window_data['font color'],
-        main_window_data['font'],
-        main_window_data['font size'],
-        text_editor_data['bgcolor'],
-        text_editor_data['font'],
-        main_window_data['selected item color'],
-        main_window_data['selected item color']))
-
-        syntax_highlighter.change_styles(syntax_highlighter_data)
-        self.current_preset_label.setText(self.db.get_current_preset_name())
+            syntax_highlighter.change_styles(syntax_highlighter_data)
+            text_editor.STYLES['highlight_color'] = QtGui.QColor(text_editor_data['line_highlighter_color'])
+            text_editor.STYLES['line_number_color'] = QtGui.QColor(text_editor_data['bgcolor'])
+            text_editor.STYLES['number_color'] = QtGui.QColor(main_window_data['font color'])
+            self.current_preset_label.setText(self.db.get_current_preset_name())
+        except Exception as e:
+            create_error_msg(e)

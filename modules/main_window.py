@@ -1,12 +1,11 @@
-from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-import sys
-from PyQt5.QtWebEngineWidgets import *
-from dragable_tabs import DragableTabs
+from PyQt5 import QtGui
+from modules.dragable_tabs import DragableTabs
 from SETTINGS import *
-from text_editor import MyTextEdit
-from style_settings_window import StyleSettings
-from database import DataBase
+from modules.text_editor import MyTextEdit
+from modules.style_settings_window import StyleSettings
+from modules.database import DataBase
+from modules.browser import App
 
 
 def save(sender, path):
@@ -16,10 +15,11 @@ def save(sender, path):
     """
     try:
         text_edit = sender.currentWidget()
+        text = text_edit.toPlanText()
         with open(path, 'w', encoding='UTF-8') as f:
-            f.write(text_edit.toPlainText())
+            f.write(text)
     except Exception as e:
-        print(f'Save error: {e}')
+        create_error_msg(f'Save error: {e}')
 
 
 def save_as(sender):
@@ -29,7 +29,6 @@ def save_as(sender):
     """
     try:
         fpath = QFileDialog.getSaveFileName()[0]
-        print(fpath)
         if fpath != '':
             text_edit = sender.currentWidget()
             text = text_edit.toPlainText()
@@ -40,7 +39,7 @@ def save_as(sender):
             return None, None
         
     except Exception as e:
-        print(f"Save as error: {e}")
+        create_error_msg(f"Save as error: {e}")
     else:
         name = fpath.split('/')[-1]
         sender.setTabText(sender.currentIndex(), name)
@@ -63,26 +62,18 @@ def create_save_file_msg():
     return msg.exec()
 
 
-def create_error_msg(parent, e):
-    """
-    Creates error QMessageBox
-    :param parent: QWidget
-    :param e: Exception
-    """
-    er = QMessageBox(parent)
-    er.setWindowTitle('Error')
-    er.setIcon(QMessageBox.Critical)
-    er.setText(str(e))
-    er.exec()
-
-
-class Window(QWidget):
+class MainWindow(QWidget):
     """Main window"""
     def __init__(self):
         super().__init__()
         self.tab_paths = {}
         self.setWindowTitle('Secuted')
-        self.setGeometry(500, 250, 800, 600)
+        self.setGeometry(*WINDOW_SIZE)
+        self.setWindowIcon(QtGui.QIcon('imgs/icon.png'))
+
+        self.db = DataBase('db.db')
+        self.style_settings_window = StyleSettings(self, self.db)
+        self.style_settings_window.apply_style_sheet()
 
         self.layout = QBoxLayout(QBoxLayout.LeftToRight)
         self.setLayout(self.layout)
@@ -99,10 +90,6 @@ class Window(QWidget):
 
         self.connect_actions()
 
-        self.db = DataBase('db.db')
-        self.style_settings_window = StyleSettings(self, self.db)
-        self.style_settings_window.apply_style_sheet()
-
     def open_file(self):
         """
         Creates QFileDialog, opens given file and writes it in new QTextEdit
@@ -117,7 +104,7 @@ class Window(QWidget):
                         new_text_edit = MyTextEdit(lang='python')
                     else:
                         new_text_edit = MyTextEdit()
-                    new_text_edit.setText(data)
+                    new_text_edit.setPlainText(data)
                     self.tab_widget_1.addTab(new_text_edit, name)
                     self.tab_paths[name] = fpath
             elif fpath in self.tab_paths.values():
@@ -127,7 +114,7 @@ class Window(QWidget):
                 er.setText('File is already opened')
                 er.exec()
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def new_file(self):
         """
@@ -157,7 +144,7 @@ class Window(QWidget):
         except AttributeError:
             pass
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def save_file_as_separately(self):
         """
@@ -165,17 +152,26 @@ class Window(QWidget):
         """
         try:
             if self.tab_widget_1.currentWidget().focused is True:
+                current_tab_text = self.tab_widget_1.tabText(self.tab_widget_1.currentIndex())
+                if current_tab_text in self.tab_paths.keys():
+                    del self.tab_paths[current_tab_text]
+
                 fpath, name = save_as(self.tab_widget_1)
                 if fpath != '' and fpath not in self.tab_paths.values() and fpath is not None:
                     self.tab_paths[name] = fpath
+
             elif self.tab_widget_2.currentWidget().focused is True:
+                current_tab_text = self.tab_widget_2.tabText(self.tab_widget_2.currentIndex())
+                if current_tab_text in self.tab_paths.keys():
+                    del self.tab_paths[current_tab_text]
+
                 fpath, name = save_as(self.tab_widget_2)
                 if fpath != '' and fpath not in self.tab_paths.values() and fpath is not None:
                     self.tab_paths[name] = fpath
         except AttributeError:
             pass
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def close_file(self, sender):
         """
@@ -197,7 +193,7 @@ class Window(QWidget):
                 widget.deleteLater()
                 sender.removeTab(index)
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def close_file_separately(self):
         """
@@ -211,7 +207,7 @@ class Window(QWidget):
         except AttributeError:
             pass
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def close_tab(self, index):
         """
@@ -228,7 +224,7 @@ class Window(QWidget):
                 widget.deleteLater()
             sender.removeTab(index)
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def init_actions(self):
         """Initializes actions"""
@@ -248,6 +244,10 @@ class Window(QWidget):
         self.vertical_layout = QAction('Vertical', self)
         self.horizontal_layout = QAction('Horizontal', self)
         self.style = QAction('Style', self)
+
+        # Syntax menu actions
+        self.plain_text_action = QAction('Plain text', self)
+        self.python_syntax_action = QAction('Python', self)
 
     def init_menus(self):
         """Initializes menus and adds actions"""
@@ -270,6 +270,10 @@ class Window(QWidget):
         self.menu_layout.addActions([self.vertical_layout, self.horizontal_layout])
         self.menu_view.addAction(self.style)
 
+        # Syntax menu
+        self.menu_syntax = self.menubar.addMenu('Syntax')
+        self.menu_syntax.addActions([self.plain_text_action, self.python_syntax_action])
+
     def connect_actions(self):
         """Connects actions with functions"""
 
@@ -291,7 +295,11 @@ class Window(QWidget):
         self.one_col_layout_action.triggered.connect(self.remove_second_column)
         self.vertical_layout.triggered.connect(self.set_vertical_layout)
         self.horizontal_layout.triggered.connect(self.set_horizontal_layout)
-        self.style.triggered.connect(self.set_style)
+        self.style.triggered.connect(self.open_style_menu)
+
+        # Syntax menu actions
+        self.plain_text_action.triggered.connect(self.set_syntax)
+        self.python_syntax_action.triggered.connect(self.set_syntax)
 
     def create_second_column(self):
         """
@@ -305,7 +313,7 @@ class Window(QWidget):
 
                 self.tab_widget_2.tabCloseRequested.connect(self.close_tab)
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def remove_second_column(self):
         """
@@ -322,18 +330,17 @@ class Window(QWidget):
                 self.tab_widget_2.setParent(None)
                 self.columns_count -= 1
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def open_browser(self):
         """
         Opens browser in a new tab
         """
         try:
-            self.browser = QWebEngineView()
-            self.browser.setUrl(QUrl(home_url))
-            self.tab_widget_1.addTab(self.browser, 'Browser')
+            browser_app = App(HOME_URL)
+            self.tab_widget_1.addTab(browser_app, 'Browser')
         except Exception as e:
-            create_error_msg(self, e)
+            create_error_msg(e)
 
     def set_horizontal_layout(self):
         """
@@ -347,15 +354,20 @@ class Window(QWidget):
         """
         self.layout.setDirection(QBoxLayout.TopToBottom)
 
-    def set_style(self):
+    def open_style_menu(self):
         """
         Opens StyleSettings window
         """
         self.style_settings_window.show()
 
+    def set_syntax(self):
+        try:
+            sender = self.sender()
+            if self.focusWidget().__class__ == MyTextEdit:
+                if sender == self.plain_text_action:
+                    self.focusWidget().set_lang('plain')
+                elif sender == self.python_syntax_action:
+                    self.focusWidget().set_lang('python')
+        except Exception as e:
+            create_error_msg(e)
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    screen = Window()
-    screen.show()
-    sys.exit(app.exec_())

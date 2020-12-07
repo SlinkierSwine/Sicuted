@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
+from SETTINGS import create_error_msg
 
 
 def format(color, style=''):
@@ -31,20 +32,6 @@ def change_styles(data):
         'self': format(data['self_color'], 'italic'),
         'numbers': format(data['numbers']),
     }
-
-
-# Syntax styles that can be shared by all languages
-# STYLES = {
-#     'keyword': format('orange'),
-#     'operator': format('darkGrey'),
-#     'brace': format('darkGray'),
-#     'defclass': format('skyblue', 'bold'),
-#     'string': format('lightGreen'),
-#     'string2': format('Green', 'italic'),
-#     'comment': format('darkGreen', 'italic'),
-#     'self': format('Magenta', 'italic'),
-#     'numbers': format('skyblue'),
-# }
 
 
 class PythonHighlighter(QSyntaxHighlighter):
@@ -147,7 +134,7 @@ class PythonHighlighter(QSyntaxHighlighter):
             if not in_multiline:
                 in_multiline = self.match_multiline(text, *self.tri_double)
         except Exception as e:
-            print(e)
+            create_error_msg(e)
 
     def match_multiline(self, text, delimiter, in_state, style):
         """Do highlighting of multi-line strings. ``delimiter`` should be a

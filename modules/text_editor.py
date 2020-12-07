@@ -1,75 +1,15 @@
-# from PyQt5.QtWidgets import QTextEdit, QAction, QPlainTextEdit
-# from PyQt5 import QtGui
-# from PyQt5.QtCore import Qt
-# import syntax_highlighter
-
+from modules import syntax_highlighter
 from PyQt5.QtCore import Qt, QRect, QSize
 from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QTextEdit
-from PyQt5.QtGui import QColor, QPainter, QTextFormat
+from PyQt5.QtGui import QColor, QPainter, QTextFormat, QTextOption
 
 
-# class MyTextEdit(QTextEdit):
-#     def __init__(self, lang=''):
-#         """
-#         Inits new MyTextEdit
-#         :param lang: str
-#         """
-#         super().__init__()
-#         self.lang = lang
-#         self.focused = False
-#         self.set_lang(self.lang)
-#         self.setContextMenuPolicy(Qt.CustomContextMenu)
-#         self.customContextMenuRequested.connect(self._context_menu)
-#         self.setTabStopDistance(
-#             QtGui.QFontMetricsF(self.font()).horizontalAdvance(' ') * 4)
-#
-#     def focusInEvent(self, event):
-#         super().focusInEvent(event)
-#         self.focused = True
-#
-#     def focusOutEvent(self, event):
-#         super().focusOutEvent(event)
-#         self.focused = False
-#
-#     def set_lang(self, lang):
-#         """
-#         Sets language
-#         :param lang: str
-#         """
-#         if lang == 'python':
-#             self.highlighter = syntax_highlighter.PythonHighlighter(self.document())
-#         elif lang == '':
-#             self.highlighter = None
-#
-#     def _context_menu(self):
-#         self.normal_menu = self.createStandardContextMenu()
-#         self._add_custom_menu_items(self.normal_menu)
-#         self.normal_menu.exec_(QtGui.QCursor.pos())
-#
-#     def _add_custom_menu_items(self, menu):
-#         menu.addSeparator()
-#
-#         self.python_syntax = QAction('Python')
-#         self.plain_text = QAction('Plain text')
-#
-#         self.menu_lang = menu.addMenu('Syntax')
-#         self.menu_lang.addActions([self.python_syntax, self.plain_text])
-#
-#         self.python_syntax.triggered.connect(self.set_syntax)
-#         self.plain_text.triggered.connect(self.set_syntax)
-#
-#     def set_syntax(self):
-#         """
-#         Sets syntax
-#         """
-#         try:
-#             sender = self.sender()
-#             if sender == self.python_syntax:
-#                 self.set_lang('python')
-#             elif sender == self.plain_text:
-#                 self.set_lang('')
-#         except Exception as e:
-#             print(e)
+STYLES = {
+    'highlight_color': QColor('#525252'),
+    'line_number_color': QColor('#202020'),
+    'number_color': QColor('#d5e6d3')
+}
+
 
 class QLineNumberArea(QWidget):
     def __init__(self, editor):
@@ -83,14 +23,43 @@ class QLineNumberArea(QWidget):
         self.codeEditor.lineNumberAreaPaintEvent(event)
 
 
-class QCodeEditor(QPlainTextEdit):
-    def __init__(self, parent=None):
+class MyTextEdit(QPlainTextEdit):
+    def __init__(self, parent=None, lang=''):
         super().__init__(parent)
+        self.lang = lang
+        self.focused = False
+        self.setWordWrapMode(QTextOption.NoWrap)
+        self.set_lang(self.lang)
         self.lineNumberArea = QLineNumberArea(self)
         self.blockCountChanged.connect(self.updateLineNumberAreaWidth)
         self.updateRequest.connect(self.updateLineNumberArea)
         self.cursorPositionChanged.connect(self.highlightCurrentLine)
         self.updateLineNumberAreaWidth(0)
+    
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Tab:
+            self.insertPlainText(' ' * 4)
+        else:
+            super().keyPressEvent(event)
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        self.focused = True
+
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        self.focused = False
+
+    def set_lang(self, lang):
+        """
+            Sets language
+            :param lang: str
+        """
+        if lang == 'python':
+            self.highlighter = syntax_highlighter.PythonHighlighter(self.document())
+        elif lang == 'plain':
+            self.highlighter = None
+            self.setPlainText(self.toPlainText())
 
     def lineNumberAreaWidth(self):
         digits = 1
@@ -121,7 +90,7 @@ class QCodeEditor(QPlainTextEdit):
         extraSelections = []
         if not self.isReadOnly():
             selection = QTextEdit.ExtraSelection()
-            lineColor = QColor(Qt.yellow).lighter(160)
+            lineColor = STYLES['highlight_color']
             selection.format.setBackground(lineColor)
             selection.format.setProperty(QTextFormat.FullWidthSelection, True)
             selection.cursor = self.textCursor()
@@ -132,31 +101,21 @@ class QCodeEditor(QPlainTextEdit):
     def lineNumberAreaPaintEvent(self, event):
         painter = QPainter(self.lineNumberArea)
 
-        painter.fillRect(event.rect(), Qt.lightGray)
+        painter.fillRect(event.rect(), STYLES['line_number_color'])
 
         block = self.firstVisibleBlock()
         blockNumber = block.blockNumber()
         top = self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
         bottom = top + self.blockBoundingRect(block).height()
 
-        # Just to make sure I use the right font
         height = self.fontMetrics().height()
         while block.isValid() and (top <= event.rect().bottom()):
             if block.isVisible() and (bottom >= event.rect().top()):
                 number = str(blockNumber + 1)
-                painter.setPen(Qt.black)
-                painter.drawText(0, top, self.lineNumberArea.width(), height, Qt.AlignRight, number)
+                painter.setPen(STYLES['number_color'])
+                painter.drawText(0, top, self.lineNumberArea.width(), height, Qt.AlignCenter, number)
 
             block = block.next()
             top = bottom
             bottom = top + self.blockBoundingRect(block).height()
             blockNumber += 1
-
-if __name__ == '__main__':
-    import sys
-    from PyQt5.QtWidgets import QApplication
-
-    app = QApplication(sys.argv)
-    codeEditor = QCodeEditor()
-    codeEditor.show()
-    sys.exit(app.exec_())

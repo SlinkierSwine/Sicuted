@@ -48,7 +48,8 @@ class DataBase:
             background_color TEXT,
             font TEXT,
             font_color TEXT,
-            font_size TEXT
+            font_size TEXT,
+            line_highlighter_color TEXT
         )
         """)
 
@@ -84,8 +85,8 @@ class DataBase:
             ''', ('#505050', "Segoe UI", '#d5e6d3', '15px', '#434343'))
 
             self.cursor.execute('''
-            INSERT INTO TextEditor(background_color, font, font_color, font_size) VALUES (?, ?, ?, ?)
-            ''', ('#202020', "Segoe UI Semibold", '#d5e6d3', '20px'))
+            INSERT INTO TextEditor(background_color, font, font_color, font_size, line_highlighter_color) VALUES (?, ?, ?, ?, ?)
+            ''', ('#202020', "Segoe UI Semibold", '#d5e6d3', '20px', '#505050'))
 
             self.cursor.execute('''
             INSERT INTO SyntaxHighlight(keywords, operators, braces, defclass, string, multiline_string, comments, self, numbers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -181,8 +182,8 @@ class DataBase:
             :return: int
         """
         self.cursor.execute('''
-                    INSERT INTO TextEditor(background_color, font, font_color, font_size) VALUES (?, ?, ?, ?)
-                    ''', (data['bgcolor'], data['font'], data['font color'], data['font size']))
+                    INSERT INTO TextEditor(background_color, font, font_color, font_size, line_highlighter_color) VALUES (?, ?, ?, ?, ?)
+                    ''', (data['bgcolor'], data['font'], data['font color'], data['font size'], data['line_highlighter_color']))
         self.cursor.execute('''
                     SELECT MAX(_id) FROM TextEditor
                 ''')
@@ -252,9 +253,9 @@ class DataBase:
         """
         self.cursor.execute('''
                     UPDATE TextEditor
-                    SET (background_color, font, font_color, font_size) = (?, ?, ?, ?)
+                    SET (background_color, font, font_color, font_size, line_highlighter_color) = (?, ?, ?, ?, ?)
                     WHERE _id = (SELECT text_editor FROM Presets WHERE name = ?)
-                    ''', (data['bgcolor'], data['font'], data['font color'], data['font size'], name))
+                    ''', (data['bgcolor'], data['font'], data['font color'], data['font size'], data['line_highlighter_color'], name))
         self.cursor.execute('''
                     SELECT MAX(_id) FROM TextEditor
                 ''')
@@ -295,7 +296,3 @@ class DataBase:
         self.update_syntax_highlight(name, syntax_highlight_data)
         self.close_connection()
 
-
-if __name__ == '__main__':
-    db = DataBase('db.db')
-    db.get_current_preset()
