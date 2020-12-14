@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from PyQt5 import uic
 from modules import syntax_highlighter, code_editor
-from SETTINGS import create_error_msg
+from SETTINGS import create_error_msg, STYLE_SETTINGS_WINDOW_SIZE
 
 
 class StyleSettings(QWidget):
@@ -21,9 +21,13 @@ class StyleSettings(QWidget):
         self.setWindowTitle('Style Settings')
         self.setWindowIcon(QtGui.QIcon('imgs/icon.png'))
         self.connect_actions()
-        self.setFixedSize(760, 530)
+        self.setFixedSize(*STYLE_SETTINGS_WINDOW_SIZE)
+        self.move(500, 250)
         self.setWindowModality(Qt.ApplicationModal)
         self.set_default_values()
+        self.preview_box = code_editor.CodeEditor(self)
+        self.preview_box.setGeometry(0, 0, 0, 0)
+        self.preview_box.setPlainText('''''')
 
     def connect_actions(self):
         """
@@ -31,6 +35,7 @@ class StyleSettings(QWidget):
         """
         try:
             self.page_combo_box.activated[int].connect(self.stackedWidget.setCurrentIndex)
+            self.page_combo_box.currentIndexChanged.connect(self.add_preview_box)
 
             self.mw_background_color_toolbtn.clicked.connect(self.choose_color)
             self.mw_font_color_toolbtn.clicked.connect(self.choose_color)
@@ -55,6 +60,17 @@ class StyleSettings(QWidget):
             self.load_preset_btn.clicked.connect(self.load_preset)
             self.save_btn.clicked.connect(self.save_preset)
             self.delete_btn.clicked.connect(self.delete_preset)
+        except Exception as e:
+            create_error_msg(e)
+
+    def add_preview_box(self, index):
+        try:
+            if index == 2:
+                self.setFixedSize(1175, 530)
+                self.preview_box.setGeometry(760, 30, 400, 450)
+            else:
+                self.setFixedSize(*STYLE_SETTINGS_WINDOW_SIZE)
+                self.preview_box.setGeometry(0, 0, 0, 0)
         except Exception as e:
             create_error_msg(e)
 
@@ -322,6 +338,7 @@ class StyleSettings(QWidget):
             text_editor_data['font'],
             main_window_data['selected item color'],
             main_window_data['selected item color']))
+
 
             syntax_highlighter.change_styles(syntax_highlighter_data)
             code_editor.STYLES['highlight_color'] = QtGui.QColor(text_editor_data['line_highlighter_color'])
