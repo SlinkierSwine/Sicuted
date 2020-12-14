@@ -2,11 +2,12 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from PyQt5 import uic
-from modules import syntax_highlighter, text_editor
+from modules import syntax_highlighter, code_editor
 from SETTINGS import create_error_msg
 
 
 class StyleSettings(QWidget):
+    """Меню настроек внешнего вида"""
     def __init__(self, main_window, db):
         """
         Inits new StyleSettings
@@ -128,39 +129,47 @@ class StyleSettings(QWidget):
             elif sender == self.numbers_toolbtn:
                 self.numbers.setText(color.name())
 
-    def get_all_data(self):
+    def get_data(self, from_main_window=False, from_text_editor=False, from_syntax_highlighter=False):
         """
-        Gets values from all fields
-        :return: tuple(dict, dict, dict)
+        Gets values from fields
+        :return: list[dict, dict, dict]
         """
-        main_window_data = {
-            'bgcolor': self.mw_background_color.text(),
-            'font': self.mw_font.currentFont().family(),
-            'font color': self.mw_font_color.text(),
-            'font size': self.mw_font_size.text(),
-            'selected item color': self.mw_selected_color.text()
-        }
+        data = []
+        if from_main_window:
+            main_window_data = {
+                'bgcolor': self.mw_background_color.text(),
+                'font': self.mw_font.currentFont().family(),
+                'font color': self.mw_font_color.text(),
+                'font size': self.mw_font_size.text(),
+                'selected item color': self.mw_selected_color.text()
+            }
+            data.append(main_window_data)
 
-        text_editor_data = {
-            'bgcolor': self.te_background_color.text(),
-            'font': self.te_font.currentFont().family(),
-            'font color': self.te_font_color.text(),
-            'font size': self.te_font_size.text(),
-            'line_highlighter_color': self.line_highlighter_color.text()
-        }
+        if from_text_editor:
+            text_editor_data = {
+                'bgcolor': self.te_background_color.text(),
+                'font': self.te_font.currentFont().family(),
+                'font color': self.te_font_color.text(),
+                'font size': self.te_font_size.text(),
+                'line_highlighter_color': self.line_highlighter_color.text()
+            }
+            data.append(text_editor_data)
 
-        syntax_highlighter_data = {
-            'keywords': self.keywords.text(),
-            'operators': self.operators.text(),
-            'braces': self.braces.text(),
-            'defclass': self.defclass.text(),
-            'string': self.string.text(),
-            'multiline_string': self.multiline_string.text(),
-            'comments': self.comments.text(),
-            'self_color': self.self_l.text(),
-            'numbers': self.numbers.text()
-        }
-        return main_window_data, text_editor_data, syntax_highlighter_data
+        if from_syntax_highlighter:
+            syntax_highlighter_data = {
+                'keywords': self.keywords.text(),
+                'operators': self.operators.text(),
+                'braces': self.braces.text(),
+                'defclass': self.defclass.text(),
+                'string': self.string.text(),
+                'multiline_string': self.multiline_string.text(),
+                'comments': self.comments.text(),
+                'self_color': self.self_l.text(),
+                'numbers': self.numbers.text()
+            }
+
+            data.append(syntax_highlighter_data)
+        return data
 
     def save_new_preset(self):
         """
@@ -175,7 +184,8 @@ class StyleSettings(QWidget):
                     msg.exec()
                     ok_pressed = False
                 else:
-                    main_window_data, text_editor_data, syntax_highlighter_data = self.get_all_data()
+                    main_window_data, text_editor_data, syntax_highlighter_data =\
+                        self.get_data(from_main_window=True, from_text_editor=True, from_syntax_highlighter=True)
 
                     self.db.create_new_preset(name, main_window_data, text_editor_data, syntax_highlighter_data)
                     self.db.set_current_preset(name)
@@ -199,7 +209,7 @@ class StyleSettings(QWidget):
             if current_preset_name == 'Default':
                 self.save_new_preset()
             else:
-                mw, te, sh = self.get_all_data()
+                mw, te, sh = self.get_data(from_main_window=True, from_text_editor=True, from_syntax_highlighter=True)
                 self.db.update_preset(current_preset_name, mw, te, sh)
                 self.apply_style_sheet()
         except Exception as e:
@@ -256,7 +266,10 @@ class StyleSettings(QWidget):
         Applies style sheet to main window and sets styles to syntax_highlighter
         """
         try:
-            main_window_data, text_editor_data, syntax_highlighter_data = self.get_all_data()
+            # Здесь происходит создание CSS главного окна.
+            # Не самый лучший вариант применения стилей, однако он работает
+            main_window_data, text_editor_data, syntax_highlighter_data =\
+                self.get_data(from_main_window=True, from_text_editor=True, from_syntax_highlighter=True)
             self.main_window.setStyleSheet('''QWidget {
         background: %s;
         color: %s;
@@ -311,9 +324,12 @@ class StyleSettings(QWidget):
             main_window_data['selected item color']))
 
             syntax_highlighter.change_styles(syntax_highlighter_data)
-            text_editor.STYLES['highlight_color'] = QtGui.QColor(text_editor_data['line_highlighter_color'])
-            text_editor.STYLES['line_number_color'] = QtGui.QColor(text_editor_data['bgcolor'])
-            text_editor.STYLES['number_color'] = QtGui.QColor(main_window_data['font color'])
-            self.current_preset_label.setText(self.db.get_current_preset_name())
+            code_editor.STYLES['highlight_color'] = QtGui.QColor(text_editor_data['line_highlighter_color'])
+            code_editor.STYLES['line_number_color'] = QtGui.QColor(text_editor_data['bgcolor'])
+            code_editor.STYLES['number_color'] = QtGui.QColor(main_window_data['font color'])
+            preset_name = self.db.get_current_preset_name()
+            self.current_preset_label.setText(preset_name)
+            self.setWindowTitle(preset_name + ' - Style Settings')
+            self.main_window.reset_syntax()
         except Exception as e:
             create_error_msg(e)

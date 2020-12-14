@@ -4,7 +4,8 @@ from PyQt5.QtWebEngineWidgets import *
 from SETTINGS import create_error_msg
 
 
-class App(QWidget):
+class BrowserApp(QWidget):
+    """Небольшой браузер с элементами управления"""
     def __init__(self, home_url):
         super().__init__()
         self.layout = QVBoxLayout()

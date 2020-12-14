@@ -2,6 +2,9 @@ from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
 from SETTINGS import create_error_msg
 
+# Source: https://stackoverflow.com/questions/6471490/adding-syntax-highlighting-to-a-text-editor-with-python
+# Использовал код, подправив некоторые моменты для реализации моих идей
+
 
 def format(color, style=''):
     """Return a QTextCharFormat with the given attributes.
@@ -121,7 +124,6 @@ class PythonHighlighter(QSyntaxHighlighter):
                 index = expression.indexIn(text, 0)
 
                 while index >= 0:
-                    # We actually want the index of the nth match
                     index = expression.pos(nth)
                     length = len(expression.cap(nth))
                     self.setFormat(index, length, format)

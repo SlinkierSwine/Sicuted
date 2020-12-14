@@ -11,30 +11,32 @@ STYLES = {
 }
 
 
-class QLineNumberArea(QWidget):
+class LineNumberArea(QWidget):
     def __init__(self, editor):
         super().__init__(editor)
-        self.codeEditor = editor
+        self.code_editor = editor
 
     def sizeHint(self):
-        return QSize(self.editor.lineNumberAreaWidth(), 0)
+        return QSize(self.editor.get_line_number_area_width(), 0)
 
     def paintEvent(self, event):
-        self.codeEditor.lineNumberAreaPaintEvent(event)
+        self.code_editor.line_number_area_paint_event(event)
 
 
-class MyTextEdit(QPlainTextEdit):
+class CodeEditor(QPlainTextEdit):
     def __init__(self, parent=None, lang=''):
         super().__init__(parent)
         self.lang = lang
         self.focused = False
+        self.line_number_area = LineNumberArea(self)
+
         self.setWordWrapMode(QTextOption.NoWrap)
         self.set_lang(self.lang)
-        self.lineNumberArea = QLineNumberArea(self)
-        self.blockCountChanged.connect(self.updateLineNumberAreaWidth)
-        self.updateRequest.connect(self.updateLineNumberArea)
-        self.cursorPositionChanged.connect(self.highlightCurrentLine)
-        self.updateLineNumberAreaWidth(0)
+        self.update_line_number_area_width(0)
+
+        self.blockCountChanged.connect(self.update_line_number_area_width)
+        self.updateRequest.connect(self.update_line_number_area)
+        self.cursorPositionChanged.connect(self.highlight_current_line)
     
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Tab:
@@ -55,13 +57,19 @@ class MyTextEdit(QPlainTextEdit):
             Sets language
             :param lang: str
         """
+        self.lang = lang
         if lang == 'python':
             self.highlighter = syntax_highlighter.PythonHighlighter(self.document())
         elif lang == 'plain':
             self.highlighter = None
             self.setPlainText(self.toPlainText())
 
-    def lineNumberAreaWidth(self):
+    def reset_highlighting(self):
+        self.highlighter = None
+        self.setPlainText(self.toPlainText())
+        self.set_lang(self.lang)
+
+    def get_line_number_area_width(self):
         digits = 1
         max_value = max(1, self.blockCount())
         while max_value >= 10:
@@ -70,52 +78,52 @@ class MyTextEdit(QPlainTextEdit):
         space = 3 + self.fontMetrics().width('9') * digits
         return space
 
-    def updateLineNumberAreaWidth(self, _):
-        self.setViewportMargins(self.lineNumberAreaWidth(), 0, 0, 0)
+    def update_line_number_area_width(self, _):
+        self.setViewportMargins(self.get_line_number_area_width(), 0, 0, 0)
 
-    def updateLineNumberArea(self, rect, dy):
+    def update_line_number_area(self, rect, dy):
         if dy:
-            self.lineNumberArea.scroll(0, dy)
+            self.line_number_area.scroll(0, dy)
         else:
-            self.lineNumberArea.update(0, rect.y(), self.lineNumberArea.width(), rect.height())
+            self.line_number_area.update(0, rect.y(), self.line_number_area.width(), rect.height())
         if rect.contains(self.viewport().rect()):
-            self.updateLineNumberAreaWidth(0)
+            self.update_line_number_area_width(0)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         cr = self.contentsRect()
-        self.lineNumberArea.setGeometry(QRect(cr.left(), cr.top(), self.lineNumberAreaWidth(), cr.height()))
+        self.line_number_area.setGeometry(QRect(cr.left(), cr.top(), self.get_line_number_area_width(), cr.height()))
 
-    def highlightCurrentLine(self):
-        extraSelections = []
+    def highlight_current_line(self):
+        extra_selections = []
         if not self.isReadOnly():
             selection = QTextEdit.ExtraSelection()
-            lineColor = STYLES['highlight_color']
-            selection.format.setBackground(lineColor)
+            line_color = STYLES['highlight_color']
+            selection.format.setBackground(line_color)
             selection.format.setProperty(QTextFormat.FullWidthSelection, True)
             selection.cursor = self.textCursor()
             selection.cursor.clearSelection()
-            extraSelections.append(selection)
-        self.setExtraSelections(extraSelections)
+            extra_selections.append(selection)
+        self.setExtraSelections(extra_selections)
 
-    def lineNumberAreaPaintEvent(self, event):
-        painter = QPainter(self.lineNumberArea)
+    def line_number_area_paint_event(self, event):
+        painter = QPainter(self.line_number_area)
 
         painter.fillRect(event.rect(), STYLES['line_number_color'])
 
         block = self.firstVisibleBlock()
-        blockNumber = block.blockNumber()
+        block_number = block.blockNumber()
         top = self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
         bottom = top + self.blockBoundingRect(block).height()
 
         height = self.fontMetrics().height()
         while block.isValid() and (top <= event.rect().bottom()):
             if block.isVisible() and (bottom >= event.rect().top()):
-                number = str(blockNumber + 1)
+                number = str(block_number + 1)
                 painter.setPen(STYLES['number_color'])
-                painter.drawText(0, top, self.lineNumberArea.width(), height, Qt.AlignCenter, number)
+                painter.drawText(0, top, self.line_number_area.width(), height, Qt.AlignCenter, number)
 
             block = block.next()
             top = bottom
             bottom = top + self.blockBoundingRect(block).height()
-            blockNumber += 1
+            block_number += 1

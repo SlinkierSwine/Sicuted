@@ -1,11 +1,11 @@
 from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
-from modules.dragable_tabs import DragableTabs
+from modules.dragable_tabs import DraggableTabs
 from SETTINGS import *
-from modules.text_editor import MyTextEdit
+from modules.code_editor import CodeEditor
 from modules.style_settings_window import StyleSettings
 from modules.database import DataBase
-from modules.browser import App
+from modules.browser import BrowserApp
 
 
 def save(sender, path):
@@ -15,7 +15,7 @@ def save(sender, path):
     """
     try:
         text_edit = sender.currentWidget()
-        text = text_edit.toPlanText()
+        text = text_edit.toPlainText()
         with open(path, 'w', encoding='UTF-8') as f:
             f.write(text)
     except Exception as e:
@@ -37,7 +37,7 @@ def save_as(sender):
                 f.write(text)
         else:
             return None, None
-        
+
     except Exception as e:
         create_error_msg(f"Save as error: {e}")
     else:
@@ -64,6 +64,7 @@ def create_save_file_msg():
 
 class MainWindow(QWidget):
     """Main window"""
+
     def __init__(self):
         super().__init__()
         self.tab_paths = {}
@@ -73,15 +74,17 @@ class MainWindow(QWidget):
 
         self.db = DataBase('db.db')
         self.style_settings_window = StyleSettings(self, self.db)
-        self.style_settings_window.apply_style_sheet()
+
 
         self.layout = QBoxLayout(QBoxLayout.LeftToRight)
         self.setLayout(self.layout)
-        self.tab_widget_1 = DragableTabs(self)
-        text_edit = MyTextEdit()
+        self.tab_widget_1 = DraggableTabs(self)
+        text_edit = CodeEditor()
         self.tab_widget_1.addTab(text_edit, 'untitled')
         self.layout.addWidget(self.tab_widget_1)
         self.columns_count = 1
+
+        self.tab_widget_2 = None
 
         self.menubar = QMenuBar(self)
         self.init_actions()
@@ -89,6 +92,7 @@ class MainWindow(QWidget):
         self.layout.setMenuBar(self.menubar)
 
         self.connect_actions()
+        self.style_settings_window.apply_style_sheet()
 
     def open_file(self):
         """
@@ -101,9 +105,9 @@ class MainWindow(QWidget):
                     data = f.read()
                     name = fpath.split('/')[-1]
                     if name.endswith('.py'):
-                        new_text_edit = MyTextEdit(lang='python')
+                        new_text_edit = CodeEditor(lang='python')
                     else:
-                        new_text_edit = MyTextEdit()
+                        new_text_edit = CodeEditor()
                     new_text_edit.setPlainText(data)
                     self.tab_widget_1.addTab(new_text_edit, name)
                     self.tab_paths[name] = fpath
@@ -120,7 +124,7 @@ class MainWindow(QWidget):
         """
         Creates new QTextEdit
         """
-        text_edit = MyTextEdit()
+        text_edit = CodeEditor()
         self.tab_widget_1.addTab(text_edit, 'untitled')
 
     def save_file_separately(self):
@@ -128,6 +132,9 @@ class MainWindow(QWidget):
         Creates QFileDialog and saves existing file at returned path
         If file doesn't exist, calls save_file_as_separately
         """
+        # Причина разделения функций сохранения, сохранить как и закрытия файла на две в том,
+        # что одна функция определяет активный QTabWidget, а другая сохраняет учитывая эту информацию
+        # Так вышло из-за того, что, когда я писал этот момент, я не знал о существовании .focusWidget()
         try:
             if self.tab_widget_1.currentWidget().focused is True:
                 fpath = self.tab_paths.get(self.tab_widget_1.tabText(self.tab_widget_1.currentIndex()))
@@ -229,7 +236,7 @@ class MainWindow(QWidget):
     def init_actions(self):
         """Initializes actions"""
         # File menu actions
-        self.new_action = QAction('New',  self)
+        self.new_action = QAction('New', self)
         self.open_action = QAction('Open', self)
         self.save_action = QAction('Save', self)
         self.save_as_action = QAction('Save as', self)
@@ -307,7 +314,7 @@ class MainWindow(QWidget):
         """
         try:
             if self.columns_count < 2:
-                self.tab_widget_2 = DragableTabs(self)
+                self.tab_widget_2 = DraggableTabs(self)
                 self.layout.addWidget(self.tab_widget_2)
                 self.columns_count += 1
 
@@ -337,7 +344,7 @@ class MainWindow(QWidget):
         Opens browser in a new tab
         """
         try:
-            browser_app = App(HOME_URL)
+            browser_app = BrowserApp(HOME_URL)
             self.tab_widget_1.addTab(browser_app, 'Browser')
         except Exception as e:
             create_error_msg(e)
@@ -361,9 +368,10 @@ class MainWindow(QWidget):
         self.style_settings_window.show()
 
     def set_syntax(self):
+        """Sets syntax of focused widget"""
         try:
             sender = self.sender()
-            if self.focusWidget().__class__ == MyTextEdit:
+            if self.focusWidget().__class__ == CodeEditor:
                 if sender == self.plain_text_action:
                     self.focusWidget().set_lang('plain')
                 elif sender == self.python_syntax_action:
@@ -371,3 +379,16 @@ class MainWindow(QWidget):
         except Exception as e:
             create_error_msg(e)
 
+    def reset_syntax(self):
+        try:
+            for i in range(self.tab_widget_1.count()):
+                widget = self.tab_widget_1.widget(i)
+                if widget.__class__ == CodeEditor:
+                    widget.reset_highlighting()
+            if self.tab_widget_2 is not None:
+                for i in range(self.tab_widget_2.count()):
+                    widget = self.tab_widget_2.widget(i)
+                    if widget.__class__ == CodeEditor:
+                        widget.reset_highlighting()
+        except Exception as e:
+            create_error_msg(e)
