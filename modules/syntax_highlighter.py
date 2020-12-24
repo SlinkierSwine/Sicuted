@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
-from modules.main_window import create_error_msg
+from modules.functions import create_error_msg
 
 # Source: https://stackoverflow.com/questions/6471490/adding-syntax-highlighting-to-a-text-editor-with-python
 # Использовал код, подправив некоторые моменты для реализации моих идей

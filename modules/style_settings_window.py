@@ -4,7 +4,7 @@ from PyQt5 import QtGui
 from PyQt5 import uic
 from modules import syntax_highlighter, code_editor
 from SETTINGS import STYLE_SETTINGS_WINDOW_SIZE
-from modules.main_window import create_error_msg
+from modules.functions import create_error_msg
 
 
 class StyleSettings(QWidget):
