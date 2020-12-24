@@ -7,7 +7,7 @@ from PyQt5.QtGui import QColor, QPainter, QTextFormat, QTextOption
 STYLES = {
     'highlight_color': QColor('#525252'),
     'line_number_color': QColor('#202020'),
-    'number_color': QColor('#d5e6d3')
+    'number_color': QColor('#d5e6d3'),
 }
 
 
@@ -58,9 +58,9 @@ class CodeEditor(QPlainTextEdit):
             :param lang: str
         """
         self.lang = lang
-        if lang == 'python':
+        if lang.lower() == 'python':
             self.highlighter = syntax_highlighter.PythonHighlighter(self.document())
-        elif lang == 'plain':
+        elif lang.lower() == 'plain' or lang == '' or lang.lower() == 'plain text':
             self.highlighter = None
             self.setPlainText(self.toPlainText())
 

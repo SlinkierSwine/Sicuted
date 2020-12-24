@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QStackedLayout
 from PyQt5.QtCore import *
 from PyQt5.QtWebEngineWidgets import *
-from SETTINGS import create_error_msg
+from modules.main_window import create_error_msg
 
 
 class BrowserApp(QWidget):

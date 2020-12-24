@@ -41,6 +41,8 @@ def save_as(sender):
     except Exception as e:
         create_error_msg(f"Save as error: {e}")
     else:
+        # если файл открылся удачно, записываем название файла и если файл расширения .py
+        # то сразу ставим подсветку синтакса питона
         name = fpath.split('/')[-1]
         sender.setTabText(sender.currentIndex(), name)
         if name.endswith('.py'):
@@ -62,6 +64,18 @@ def create_save_file_msg():
     return msg.exec()
 
 
+def create_error_msg(e):
+    """
+    Creates error QMessageBox
+    :param e: Exception
+    """
+    er = QMessageBox()
+    er.setWindowTitle('Error')
+    er.setIcon(QMessageBox.Critical)
+    er.setText(str(e))
+    er.exec()
+
+
 class MainWindow(QWidget):
     """Main window"""
 
@@ -74,7 +88,6 @@ class MainWindow(QWidget):
 
         self.db = DataBase('db.db')
         self.style_settings_window = StyleSettings(self, self.db)
-
 
         self.layout = QBoxLayout(QBoxLayout.LeftToRight)
         self.setLayout(self.layout)
@@ -100,7 +113,7 @@ class MainWindow(QWidget):
         """
         fpath = QFileDialog.getOpenFileName(self, 'Choose a file', '')[0]
         try:
-            if fpath != '' and fpath not in self.tab_paths.values():
+            if fpath != '' and fpath not in self.tab_paths.values():  # если файл выбран и еще не открыт...
                 with open(fpath, encoding='UTF-8') as f:
                     data = f.read()
                     name = fpath.split('/')[-1]
@@ -111,7 +124,7 @@ class MainWindow(QWidget):
                     new_text_edit.setPlainText(data)
                     self.tab_widget_1.addTab(new_text_edit, name)
                     self.tab_paths[name] = fpath
-            elif fpath in self.tab_paths.values():
+            elif fpath in self.tab_paths.values():  # если файл уже открыт, выводим ошибку
                 er = QMessageBox(self)
                 er.setIcon(QMessageBox.Information)
                 er.setWindowTitle('Error')
@@ -138,7 +151,7 @@ class MainWindow(QWidget):
         try:
             if self.tab_widget_1.currentWidget().focused is True:
                 fpath = self.tab_paths.get(self.tab_widget_1.tabText(self.tab_widget_1.currentIndex()))
-                if fpath is None:
+                if fpath is None:  # если файла не существует, вызываем функцию сохранить как
                     self.save_file_as_separately()
                 else:
                     save(self.tab_widget_1, fpath)
@@ -160,12 +173,12 @@ class MainWindow(QWidget):
         try:
             if self.tab_widget_1.currentWidget().focused is True:
                 current_tab_text = self.tab_widget_1.tabText(self.tab_widget_1.currentIndex())
-                if current_tab_text in self.tab_paths.keys():
+                if current_tab_text in self.tab_paths.keys():  # если у файла уже есть название, удаляем из tab_paths
                     del self.tab_paths[current_tab_text]
 
                 fpath, name = save_as(self.tab_widget_1)
                 if fpath != '' and fpath not in self.tab_paths.values() and fpath is not None:
-                    self.tab_paths[name] = fpath
+                    self.tab_paths[name] = fpath  # добавляем новое название файла в tab_paths
 
             elif self.tab_widget_2.currentWidget().focused is True:
                 current_tab_text = self.tab_widget_2.tabText(self.tab_widget_2.currentIndex())
@@ -328,7 +341,7 @@ class MainWindow(QWidget):
         """
         try:
             if self.columns_count == 2:
-                for i in range(self.tab_widget_2.count(), -1, -1):
+                for i in range(self.tab_widget_2.count(), -1, -1):  # перетаскиваем все вкладки со второго виджета на первый
                     self.tab_widget_1.addTab(self.tab_widget_2.widget(i), self.tab_widget_2.tabText(i))
                     widget = self.tab_widget_2.widget(i)
                     if widget is not None:

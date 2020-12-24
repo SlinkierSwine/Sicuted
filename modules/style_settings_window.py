@@ -3,7 +3,8 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from PyQt5 import uic
 from modules import syntax_highlighter, code_editor
-from SETTINGS import create_error_msg, STYLE_SETTINGS_WINDOW_SIZE
+from SETTINGS import STYLE_SETTINGS_WINDOW_SIZE
+from modules.main_window import create_error_msg
 
 
 class StyleSettings(QWidget):
@@ -18,16 +19,39 @@ class StyleSettings(QWidget):
         self.db = db
         self.main_window = main_window
         uic.loadUi('ui_files/style_settings.ui', self)
+
         self.setWindowTitle('Style Settings')
         self.setWindowIcon(QtGui.QIcon('imgs/icon.png'))
-        self.connect_actions()
         self.setFixedSize(*STYLE_SETTINGS_WINDOW_SIZE)
         self.move(500, 250)
         self.setWindowModality(Qt.ApplicationModal)
+
+        self.preview_code_editor = code_editor.CodeEditor(self)
+        self.preview_code_editor.setGeometry(0, 0, 0, 0)
+        self.preview_code_editor.setPlainText('''import sys
+
+def function(args):
+    ''' + "'''Some function'''" + '''
+    print('blabla')
+
+class Class:
+    """Some class"""
+    def __init__(self):
+        self.numbers = [1, 2, 3, 4, 5]
+        # Comment
+        self.res = 1 + 2
+''')
+        self.preview_label = QLabel('Choose syntax:', self)
+        self.preview_label.setGeometry(0, 0, 0, 0)
+        self.preview_combo_box = QComboBox(self)
+        self.preview_combo_box.addItems(['Python', 'Plain text'])
+        self.preview_combo_box.setGeometry(0, 0, 0, 0)
+
+        self.info_label = QLabel('Click the "Save and apply" button to see changes', self)
+        self.info_label.setGeometry(0, 0, 0, 0)
+
+        self.connect_actions()
         self.set_default_values()
-        self.preview_box = code_editor.CodeEditor(self)
-        self.preview_box.setGeometry(0, 0, 0, 0)
-        self.preview_box.setPlainText('''''')
 
     def connect_actions(self):
         """
@@ -36,6 +60,7 @@ class StyleSettings(QWidget):
         try:
             self.page_combo_box.activated[int].connect(self.stackedWidget.setCurrentIndex)
             self.page_combo_box.currentIndexChanged.connect(self.add_preview_box)
+            self.preview_combo_box.activated.connect(self.change_preview_syntax)
 
             self.mw_background_color_toolbtn.clicked.connect(self.choose_color)
             self.mw_font_color_toolbtn.clicked.connect(self.choose_color)
@@ -64,13 +89,23 @@ class StyleSettings(QWidget):
             create_error_msg(e)
 
     def add_preview_box(self, index):
+        """Добавляет превью подсветки текста"""
         try:
             if index == 2:
                 self.setFixedSize(1175, 530)
-                self.preview_box.setGeometry(760, 30, 400, 450)
+                self.preview_code_editor.setGeometry(760, 60, 400, 375)
+                self.preview_label.setGeometry(760, 30, 100, 20)
+                self.preview_combo_box.setGeometry(860, 30, 100, 20)
+                self.info_label.setGeometry(760, 450, 500, 20)
             else:
                 self.setFixedSize(*STYLE_SETTINGS_WINDOW_SIZE)
-                self.preview_box.setGeometry(0, 0, 0, 0)
+                self.preview_code_editor.setGeometry(0, 0, 0, 0)
+        except Exception as e:
+            create_error_msg(e)
+
+    def change_preview_syntax(self):
+        try:
+            self.preview_code_editor.set_lang(self.preview_combo_box.currentText())
         except Exception as e:
             create_error_msg(e)
 
@@ -297,7 +332,7 @@ class StyleSettings(QWidget):
         background: %s;
         border-radius: 5px;
         font-family: %s;
-        font-size: 20px;
+        font-size: %s;
     }
     
     QTabBar::tab {
@@ -336,11 +371,22 @@ class StyleSettings(QWidget):
             main_window_data['font size'],
             text_editor_data['bgcolor'],
             text_editor_data['font'],
+            text_editor_data['font size'],
             main_window_data['selected item color'],
             main_window_data['selected item color']))
 
+            self.preview_code_editor.setStyleSheet('''QPlainTextEdit {
+        background: %s;
+        border-radius: 5px;
+        font-family: %s;
+        font-size: %s;
+        color: %s;
+    }''' % (text_editor_data['bgcolor'],
+            text_editor_data['font'],
+            text_editor_data['font size'],
+            main_window_data['font color']))
 
-            syntax_highlighter.change_styles(syntax_highlighter_data)
+            syntax_highlighter.custom_styles(syntax_highlighter_data)
             code_editor.STYLES['highlight_color'] = QtGui.QColor(text_editor_data['line_highlighter_color'])
             code_editor.STYLES['line_number_color'] = QtGui.QColor(text_editor_data['bgcolor'])
             code_editor.STYLES['number_color'] = QtGui.QColor(main_window_data['font color'])
@@ -348,5 +394,6 @@ class StyleSettings(QWidget):
             self.current_preset_label.setText(preset_name)
             self.setWindowTitle(preset_name + ' - Style Settings')
             self.main_window.reset_syntax()
+            self.preview_code_editor.set_lang('python')
         except Exception as e:
             create_error_msg(e)
