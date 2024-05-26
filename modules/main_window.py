@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
+from modules.download_from_server import DownloadFromServerWidget
 from modules.dragable_tabs import DraggableTabs
 from SETTINGS import *
 from modules.code_editor import CodeEditor
@@ -21,6 +22,8 @@ class MainWindow(QWidget):
 
         self.db = DataBase('db.db')
         self.style_settings_window = StyleSettings(self, self.db)
+
+        self.download_from_server_window = DownloadFromServerWidget(self)
 
         self.layout = QBoxLayout(QBoxLayout.LeftToRight)
         self.setLayout(self.layout)
@@ -48,15 +51,8 @@ class MainWindow(QWidget):
         try:
             if fpath != '' and fpath not in self.tab_paths.values():  # если файл выбран и еще не открыт...
                 with open(fpath, encoding='UTF-8') as f:
-                    data = f.read()
-                    name = fpath.split('/')[-1]
-                    if name.endswith('.py'):
-                        new_text_edit = CodeEditor(lang='python')
-                    else:
-                        new_text_edit = CodeEditor()
-                    new_text_edit.setPlainText(data)
-                    self.tab_widget_1.addTab(new_text_edit, name)
-                    self.tab_paths[name] = fpath
+                    text = f.read()
+                    self.new_file_with_text(fpath, text)
             elif fpath in self.tab_paths.values():  # если файл уже открыт, выводим ошибку
                 er = QMessageBox(self)
                 er.setIcon(QMessageBox.Information)
@@ -73,14 +69,22 @@ class MainWindow(QWidget):
         text_edit = CodeEditor()
         self.tab_widget_1.addTab(text_edit, 'untitled')
 
+    def new_file_with_text(self, fpath: str, text) -> None:
+        name = fpath.split('/')[-1]
+        if name.endswith('.py'):
+            new_text_edit = CodeEditor(lang='python')
+        else:
+            new_text_edit = CodeEditor()
+
+        new_text_edit.setPlainText(text)
+        self.tab_widget_1.addTab(new_text_edit, name)
+        self.tab_paths[name] = fpath
+
     def save_file_separately(self):
         """
         Creates QFileDialog and saves existing file at returned path
         If file doesn't exist, calls save_file_as_separately
         """
-        # Причина разделения функций сохранения, сохранить как и закрытия файла на две в том,
-        # что одна функция определяет активный QTabWidget, а другая сохраняет учитывая эту информацию
-        # Так вышло из-за того, что, когда я писал этот момент, я не знал о существовании .focusWidget()
         try:
             if self.tab_widget_1.currentWidget().focused is True:
                 fpath = self.tab_paths.get(self.tab_widget_1.tabText(self.tab_widget_1.currentIndex()))
@@ -187,6 +191,9 @@ class MainWindow(QWidget):
         self.save_action = QAction('Save', self)
         self.save_as_action = QAction('Save as', self)
         self.close_file_action = QAction('Close file', self)
+        self.download_from_server_action = QAction('Download from server', self)
+
+        self.all_actions = [self.new_action, self.open_action, self.save_action, self.save_as_action, self.close_file_action, self.download_from_server_action]
 
         # Browser menu actions
         self.open_browser_action = QAction('Open Browser', self)
@@ -206,8 +213,7 @@ class MainWindow(QWidget):
         """Initializes menus and adds actions"""
         # File menu
         self.menu_file = self.menubar.addMenu("File")
-        actions = [self.new_action, self.open_action, self.save_action, self.save_as_action, self.close_file_action]
-        self.menu_file.addActions(actions)
+        self.menu_file.addActions(self.all_actions)
 
         # Browser menu
         self.menu_browser = self.menubar.addMenu("Browser")
@@ -239,6 +245,7 @@ class MainWindow(QWidget):
         self.save_action.triggered.connect(self.save_file_separately)
         self.save_as_action.triggered.connect(self.save_file_as_separately)
         self.close_file_action.triggered.connect(self.close_file_separately)
+        self.download_from_server_action.triggered.connect(self.download_from_server)
 
         # Browser menu actions
         self.open_browser_action.triggered.connect(self.open_browser)
@@ -294,6 +301,9 @@ class MainWindow(QWidget):
             self.tab_widget_1.addTab(browser_app, 'Browser')
         except Exception as e:
             create_error_msg(e)
+
+    def download_from_server(self):
+        self.download_from_server_window.show()
 
     def set_horizontal_layout(self):
         """

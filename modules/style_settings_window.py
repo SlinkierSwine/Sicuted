@@ -317,8 +317,6 @@ class Class:
         Applies style sheet to main window and sets styles to syntax_highlighter
         """
         try:
-            # Здесь происходит создание CSS главного окна.
-            # Не самый лучший вариант применения стилей, однако он работает
             main_window_data, text_editor_data, syntax_highlighter_data =\
                 self.get_data(from_main_window=True, from_text_editor=True, from_syntax_highlighter=True)
             self.main_window.setStyleSheet('''QWidget {

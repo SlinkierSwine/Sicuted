@@ -2,8 +2,6 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
-# Source: https://forum.qt.io/topic/67542/drag-tabs-between-qtabwidgets/6
-# Так же скопировал и изменил под свои нужды
 
 class DraggableTabs(QTabWidget):
     def __init__(self, parent):
